@@ -1,0 +1,16 @@
+{
+  "scope": "A",
+  "version": 1,
+  "restricted": false,
+  "overridable": true,
+  "files": [
+    "keystore.pfx"
+  ],
+  "attributes": {
+    "lastModification": {
+      "actor": "default",
+      "timestamp": "2026-03-04T00:47:42Z"
+    },
+    "lastModificationSignature": "ccfe9437644bbb6cc19984257c22b8e78724b57a6922ae12dea0a4d614db21b2"
+  }
+}

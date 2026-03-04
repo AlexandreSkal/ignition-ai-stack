@@ -1,0 +1,98 @@
+###############################################################################
+# AI Stack - Ignition 8.3 + Claude Code + PostgreSQL
+#
+# USAGE:
+#   docker compose up -d                 → start all services
+#   docker compose exec claude bash      → enter Claude Code container
+#   docker compose down                  → stop everything
+#
+# PORTS:
+#   8088  → Ignition Gateway (HTTP)
+#   8043  → Ignition Gateway (HTTPS)
+#   5432  → PostgreSQL
+#
+# MIGRATION:
+#   Copy this entire folder to the new server.
+#   Export Docker volumes for Ignition and Postgres data (see README).
+###############################################################################
+
+services:
+
+  # ─────────────────────────────────────────────
+  # PostgreSQL 16 — database for Ignition + apps
+  # ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: ignition-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=ignition
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ignition_dev_2024}
+      - POSTGRES_DB=ignition
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ignition"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────
+  # Ignition 8.3.3 — SCADA/IIoT Gateway
+  # ─────────────────────────────────────────────
+  ignition:
+    image: inductiveautomation/ignition:8.3.3
+    container_name: ignition-gateway
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+      - "8043:8043"
+    volumes:
+      - ./ignition-data:/usr/local/bin/ignition/data
+    environment:
+      - ACCEPT_IGNITION_EULA=Y
+      - GATEWAY_ADMIN_USERNAME=admin
+      - GATEWAY_ADMIN_PASSWORD=${IGNITION_PASSWORD:-admin}
+      - IGNITION_EDITION=standard
+      - TZ=America/Sao_Paulo
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ─────────────────────────────────────────────
+  # Claude Code — development container
+  # ─────────────────────────────────────────────
+  claude:
+    build:
+      context: ./claude-code
+      dockerfile: Dockerfile
+    container_name: claude-dev
+    restart: unless-stopped
+    volumes:
+      - ./workspace:/workspace
+      - ./ignition-data:/ignition-data:ro
+      - claude-home:/home/node/.claude
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    environment:
+      - IGNITION_GATEWAY_URL=http://ignition:8088
+      - IGNITION_API_KEY=${IGNITION_API_KEY:-}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=ignition
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ignition_dev_2024}
+      - POSTGRES_DB=ignition
+      - TZ=America/Sao_Paulo
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: sleep infinity
+
+volumes:
+  postgres-data:
+    name: ignition-stack-postgres
+  claude-home:
+    name: ignition-stack-claude
