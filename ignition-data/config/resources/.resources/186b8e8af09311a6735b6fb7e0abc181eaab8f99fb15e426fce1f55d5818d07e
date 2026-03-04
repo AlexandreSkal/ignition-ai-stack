@@ -1,0 +1,14 @@
+[
+  {
+    "name": "bool",
+    "typeId": "",
+    "tagType": "UdtType",
+    "tags": [
+      {
+        "valueSource": "memory",
+        "name": "ab",
+        "tagType": "AtomicTag"
+      }
+    ]
+  }
+]
